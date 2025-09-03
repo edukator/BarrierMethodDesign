@@ -5,11 +5,11 @@ close all;
 
 F = 8;                 % forcing parameter
 he = 1e-3;             % time step, standard Euler
-t_final = 8;           % duration of the simulation in natural time units
+t_final = 10;           % duration of the simulation in natural time units
 NTe = fix(t_final/he); % no. of discrete time steps, standard Euler
 
-sz = sqrt(1/4);        % std of the observations; full filtering
-sx = sqrt(1/2);        % std of the signal noise / diffusion coefficient
+sz = 1;        % std of the observations; full filtering
+sx = 1;        % std of the signal noise / diffusion coefficient
 tobs = 0.1;            % continuous time between observations
 
 % Particle filter parameters
@@ -27,11 +27,11 @@ fine_time_mesh = he*(0:NTe);
 r_obs = 4*sz;
 barrier_params.p     = r_obs; % keep constant
 barrier_params.alpha = 1;     % optimize
-barrier_params.mu    = 50;     % optimize
-barrier_params.k     = 80;     % optimize
+barrier_params.mu    = 6;     % optimize
+barrier_params.k     = 4;     % optimize
 
 %% Dimensions, particles, and observation pattern
-Dx = 2000;
+Dx = 750;
 N  = 500;
 Dz = fix(3*Dx/5);                    % partial observation
 fixed_observed_components = randsample(Dx, Dz);

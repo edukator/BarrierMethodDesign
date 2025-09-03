@@ -45,8 +45,8 @@ if ~exist(outdir, 'dir'), mkdir(outdir); end
 % Adjust these lists as desired
 %mu_list = [0.5, 1, 5, 10, 25, 50, 75, 100];
 %k_list  = [0.5,  5, 25, 50, 75, 100];
-mu_list = [3,4, 5, 6,7];
-k_list  = [3,4, 5, 6,7];
+mu_list = [5.75, 6,6.25,6.5];
+k_list  = [4, 5, 6];
 
 n_mu = numel(mu_list);
 n_k  = numel(k_list);

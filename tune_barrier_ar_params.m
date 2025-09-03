@@ -44,46 +44,65 @@ n_mu = numel(mu_list);
 n_k  = numel(k_list);
 
 %% ===================== Evaluate grid ====================================
-EvalLog = zeros(0,3);  % rows: [mu, k, MSEf]
+EvalLog = NaN(n_mu*n_k, 3);  % rows: [mu, k, MSEf]
 best_msef = inf;
 best_mu = NaN;
 best_k  = NaN;
 
+t = 0;
 for i = 1:n_mu
     for j = 1:n_k
+        t = t + 1;
         mu = mu_list(i);
         k  = k_list(j);
+        MSEf = NaN; % default if invalid
         barrier_params = struct('p', D.r_obs, 'alpha', 1, 'mu', mu, 'k', k);
         [Yf, ~, acc_counts, ~] = sir_barrier_ar(D.F, D.sx, D.sz, D.he, D.NTe, D.n_obs, ...
             D.ze_sparse, D.H, D.X0, D.ness_thr, D.r_obs, barrier_params);
         if any(acc_counts==0) || any(isnan(Yf(:)))
             fprintf('Skipping mu=%.6g, k=%.6g (invalid)\n', mu, k);
-            continue;
+        else
+            MSEf = mean(sum((Yf - D.x(:, D.filtered_solution_indices)).^2,1)) / D.Pd_f;
+            if MSEf < best_msef
+                best_msef = MSEf;
+                best_mu = mu;
+                best_k = k;
+            end
         end
-        MSEf = mean(sum((Yf - D.x(:, D.filtered_solution_indices)).^2,1)) / D.Pd_f;
-        EvalLog(end+1,:) = [mu, k, MSEf]; %#ok<AGROW>
-        if MSEf < best_msef
-            best_msef = MSEf;
-            best_mu = mu;
-            best_k = k;
-        end
+        EvalLog(t,:) = [mu, k, MSEf];
     end
 end
 
-%% ===================== Report best ======================================
-if isempty(EvalLog)
+%% ===================== Report/save results ==============================
+if isinf(best_msef)
     error('No valid (mu,k) evaluations.');
 end
 fprintf('Best parameters: mu = %.6g, k = %.6g, MSEf = %.6g\n', best_mu, best_k, best_msef);
+
+EvalTbl = array2table(EvalLog, 'VariableNames', {'mu','k','MSEf'});
+
+% --- Save evaluation log to timestamped CSV in subdirectory
+numtok = @(v) strrep( strrep( strrep( sprintf('%.6g', v), '.', 'p'), '-', 'm'), '+', 'p');
+base_name_common = sprintf(['alpha1_Dx%d_Dz%d_N%d_sz%s_sx%s_he%s_tobs%s_T%s_seed%d'], ...
+    Dx, Dz, N, numtok(sz), numtok(sx), numtok(he), numtok(tobs), numtok(t_final), fixed_seed);
+timestamp = datestr(now,'yyyymmdd_HHMMSS');
+base_name = [base_name_common '_' timestamp];
+outdir_base = fullfile(pwd, 'barrier_ar_grid_results');
+outdir = fullfile(outdir_base, base_name);
+if ~exist(outdir, 'dir'), mkdir(outdir); end
+csv_path = fullfile(outdir, [base_name '_eval_log.csv']);
+writetable(EvalTbl, csv_path);
+fprintf('Saved evaluation log to %s\n', csv_path);
 
 %% ===================== Pack results =====================================
 results = struct();
 results.best_params = struct('mu', best_mu, 'k', best_k, 'alpha', 1);
 results.best_msef   = best_msef;
-results.eval_table  = array2table(EvalLog, 'VariableNames', {'mu','k','MSEf'});
+results.eval_table  = EvalTbl;
 results.dataset     = D;
 results.mu_list     = mu_list;
 results.k_list      = k_list;
+results.csv_path    = csv_path;
 
 end
 
